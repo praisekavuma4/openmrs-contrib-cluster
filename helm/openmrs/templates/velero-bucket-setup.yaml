@@ -48,12 +48,20 @@ spec:
             - |
               set -e
               echo "Creating Velero backup bucket if it does not exist..."
-              aws s3api create-bucket \
+              if OUT=$(aws s3api create-bucket \
                 --bucket {{ required "backup.bucket is required when backup.enabled=true" .Values.backup.bucket }} \
                 --endpoint-url {{ .Values.backup.s3Url }} \
-                --region {{ .Values.backup.region }} \
-                2>&1 | grep -v "BucketAlreadyOwnedByYou" \
-                || { echo "Bucket already exists, continuing."; true; }
+                --region {{ .Values.backup.region }} 2>&1); then
+                echo "Bucket created."
+              else
+                case "$OUT" in
+                  *BucketAlreadyOwnedByYou*|*BucketAlreadyExists*)
+                    echo "Bucket already exists, continuing." ;;
+                  *)
+                    echo "$OUT" >&2
+                    exit 1 ;;
+                esac
+              fi
               echo "Bucket ready."
 {{- end }}
 {{- end }}

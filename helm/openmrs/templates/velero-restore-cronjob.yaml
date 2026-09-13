@@ -1,5 +1,5 @@
 {{- if and .Values.backup.enabled .Values.backup.restore.enabled }}
-# ClusterRole — gives the restore checker permission to read pods and manage restores
+# ClusterRole — gives the restore checker permission to list and create Restores
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -7,11 +7,8 @@ metadata:
   labels:
     {{- include "openmrs.labels" . | nindent 4 }}
 rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list"]
   - apiGroups: ["velero.io"]
-    resources: ["backups", "restores"]
+    resources: ["restores"]
     verbs: ["get", "list", "create"]
 ---
 # ClusterRoleBinding — connects the permission above to our service account 
@@ -39,7 +36,8 @@ metadata:
   labels:
     {{- include "openmrs.labels" . | nindent 4 }}
 ---
-# CronJob — unconditional scheduled restore from the latest Velero backup 
+# CronJob — unconditional scheduled restore from the latest completed backup
+# produced by this release's daily-backup Schedule (Velero picks the backup).
 # WARNING: This restores the entire namespace from the latest backup on every scheduled run.
 # It does NOT check whether the cluster is broken first.
 # Enable this only for demo environments where a daily reset to a known state is desired.
@@ -62,7 +60,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: scheduled-restore
-              image: bitnami/kubectl:1.30-debian-12
+              image: {{ .Values.backup.restore.image | default "registry.k8s.io/kubectl:v1.30.14" }}
               command:
                 - /bin/sh
                 - -c
@@ -70,22 +68,6 @@ spec:
                   echo "=== OpenMRS Scheduled Restore $(date) ==="
                   VELERO_NAMESPACE={{ .Values.backup.veleroNamespace }}
                   APP_NAMESPACE={{ .Release.Namespace }}
-
-                  # Find the most recent completed backup in the Velero namespace.
-                  # Velero stores its Backup resources in its own namespace,
-                  # not in the application namespace.
-                  LATEST_BACKUP=$(kubectl get backup.velero.io \
-                    -n "$VELERO_NAMESPACE" \
-                    --sort-by=.metadata.creationTimestamp \
-                    --no-headers 2>/dev/null | \
-                    grep 'Completed' | tail -1 | awk '{print $1}')
-
-                  if [ -z "$LATEST_BACKUP" ]; then
-                    echo "No completed backups found in $VELERO_NAMESPACE. Skipping restore."
-                    exit 0
-                  fi
-
-                  echo "Latest backup: $LATEST_BACKUP"
 
                   # Skip if a restore is already running
                   ACTIVE=$(kubectl get restore.velero.io \
@@ -98,8 +80,8 @@ spec:
                     exit 0
                   fi
 
-                  echo "Triggering scheduled restore from: $LATEST_BACKUP"
-
+                  set -e
+                  echo "Submitting restore from schedule {{ .Release.Name }}-daily-backup"
                   cat <<EOF | kubectl apply -f -
                   apiVersion: velero.io/v1
                   kind: Restore
@@ -107,11 +89,10 @@ spec:
                     name: scheduled-restore-$(date +%Y%m%d%H%M)
                     namespace: $VELERO_NAMESPACE
                   spec:
-                    backupName: $LATEST_BACKUP
+                    scheduleName: {{ .Release.Name }}-daily-backup
                     includedNamespaces:
                       - $APP_NAMESPACE
-                    existingResourcePolicy: replace
+                    existingResourcePolicy: update
                   EOF
-
-                  echo "Restore submitted successfully."
+                  echo "Restore submitted."
 {{- end }}

@@ -36,7 +36,7 @@ spec:
               emptyDir: {}
           initContainers:
             - name: dump
-              image: bitnami/mariadb:10.11
+              image: {{ .Values.backup.mariadbBackup.image | default (printf "mariadb:%s" (.Values.mariadb.image.tag | default "10.11")) }}
               env:
                 - name: MARIADB_ROOT_PASSWORD
                   valueFrom:
