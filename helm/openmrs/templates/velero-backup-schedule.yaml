@@ -15,12 +15,15 @@ stringData:
     aws_access_key_id={{ required "backup.credentials.accessKey is required when backup.enabled=true" .Values.backup.credentials.accessKey }}
     aws_secret_access_key={{ required "backup.credentials.secretKey is required when backup.enabled=true" .Values.backup.credentials.secretKey }}
 ---
-# Velero BackupStorageLocation — tells Velero where to store backups 
+# Velero BackupStorageLocation — tells Velero where to store backups
+# Must live in backup.veleroNamespace: Velero's controller only watches
+# Backup/Restore/Schedule/BackupStorageLocation objects in its own install
+# namespace, not the namespace being backed up.
 apiVersion: velero.io/v1
 kind: BackupStorageLocation
 metadata:
   name: {{ .Release.Name }}-backup-location
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.backup.veleroNamespace }}
   labels:
     {{- include "openmrs.labels" . | nindent 4 }}
 spec:
@@ -37,12 +40,15 @@ spec:
     name: {{ .Release.Name }}-velero-credentials
     key: cloud
 ---
-# Velero Schedule — daily backup of this OpenMRS namespace 
+# Velero Schedule — daily backup of this OpenMRS namespace
+# Must live in backup.veleroNamespace, same reason as the
+# BackupStorageLocation above — the Schedule controller only reconciles
+# objects in Velero's own install namespace.
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
   name: {{ .Release.Name }}-daily-backup
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.backup.veleroNamespace }}
   labels:
     {{- include "openmrs.labels" . | nindent 4 }}
 spec:

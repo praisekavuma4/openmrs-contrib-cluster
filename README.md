@@ -351,7 +351,7 @@ exists in a tenant chart consuming the shared `openmrs-backend`/`openmrs-fronten
 | `backup.veleroNamespace`                                       | Namespace Velero is installed in                                                                 | `"velero"`        |
 | `backup.restore.enabled`                                       | Deploy the scheduled restore CronJob. Restores the whole namespace from the latest completed backup on every run — intended for demo environments, not production | `false` |
 | `backup.restore.schedule`                                      | Cron schedule for the scheduled restore                                                          | `"0 3 * * *"`     |
-| `backup.restore.image`                                         | Image used to submit the scheduled Restore via kubectl                                            | `"registry.k8s.io/kubectl:v1.30.14"` |
+| `backup.restore.image`                                         | Image used to submit the scheduled Restore via kubectl. Must include a shell (`/bin/sh`) — `registry.k8s.io/kubectl` does not | `"alpine/k8s:1.30.14"` |
 | `backup.mariadbBackup.enabled`                                 | Deploy a dedicated CronJob that dumps MariaDB directly to S3, independent of Velero                | `false`           |
 | `backup.mariadbBackup.schedule`                                | Cron schedule for the MariaDB dump                                                                | `"30 1 * * *"`    |
 | `backup.mariadbBackup.image`                                   | Image used to run `mysqldump`. Empty defaults to `mariadb:<mariadb.image.tag>`                     | `""`              |

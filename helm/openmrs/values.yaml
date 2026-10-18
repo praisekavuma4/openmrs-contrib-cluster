@@ -314,7 +314,7 @@ backup:
     # Image used to submit the scheduled Restore via kubectl. Override to
     # repoint without a chart change (e.g. if the default tag stops
     # resolving on your registry).
-    image: "registry.k8s.io/kubectl:v1.30.14"
+    image: "alpine/k8s:1.30.14"
 
   # The namespace where Velero is installed.
   # Velero stores its Backup and Restore resources in its own namespace.

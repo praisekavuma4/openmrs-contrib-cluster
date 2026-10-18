@@ -60,7 +60,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: scheduled-restore
-              image: {{ .Values.backup.restore.image | default "registry.k8s.io/kubectl:v1.30.14" }}
+              image: {{ .Values.backup.restore.image | default "alpine/k8s:1.30.14" }}
               command:
                 - /bin/sh
                 - -c
